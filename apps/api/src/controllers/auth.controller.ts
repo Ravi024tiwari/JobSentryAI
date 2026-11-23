@@ -1,14 +1,11 @@
-"use server"
-
 import { Request,Response } from "express"
 import bcrypt from "bcryptjs"
-import {SignJWT,jwtVerify} from "jose"
 
-import { db } from "src/db/client"//here it will have the persistant connection with that
-import { users } from "src/db/schema"
+import { db } from "../db/client"
+import { users } from "../db/schema"
 import { eq } from "drizzle-orm"
 import crypto from "crypto"
-import { createSession,deleteSession } from "src/lib/session"
+import { createSession,deleteSession } from "../lib/session"
 
 
 
@@ -34,7 +31,7 @@ export const register = async(req:Request,res:Response)=>{
 
         const exitingUser =await db.select().from(users).where(eq(users.email,normalizedEmail)).limit(1);//here we check is any user exits
         
-        if(exitingUser){
+        if(exitingUser.length > 0){
             return res.status(400).json({
                 success:false,
                 message:"Email is already register.. Please use other email.."
@@ -124,7 +121,7 @@ export const login = async(req:Request,res:Response)=>{
     }
 }
 
-export const logout = async(req:Response,res:Response)=>{
+export const logout = async(_req:Request,res:Response)=>{
    deleteSession(res);
 
    console.log("User logged out successfully..")

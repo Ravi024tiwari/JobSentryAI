@@ -6,13 +6,12 @@ import dotenv from "dotenv"
 
 dotenv.config();
 
-
-import { authRouter } from "./routes/auth.route"
-
+import { authRouter } from "./routes/auth.route";
+import { jobRouter } from "./routes/job.route";
 
 const app = express();
 
-app.use(helmet);//security Header for the scriting headers
+app.use(helmet());//security Header for the scriting headers
 
 app.use(
     cors({
@@ -33,9 +32,8 @@ app.get("/health",(_req,res)=>{
     })
 })
 
-
-//now export that
-
-authRouter.use("/api/v1",authRouter);//here we call that
+// Mount API Routers
+app.use("/api/v1", authRouter);
+app.use("/api/v1/jobs", jobRouter);
 
 export default app;
