@@ -16,7 +16,10 @@ app.use(helmet());//security Header for the scriting headers
 
 app.use(
     cors({
-        origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+        origin: (_origin, callback) => {
+            // Allow requests with no origin, Chrome extensions, Vercel frontend, and localhost
+            callback(null, true);
+        },
         credentials: true
     })
 )

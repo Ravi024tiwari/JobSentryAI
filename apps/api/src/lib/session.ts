@@ -32,14 +32,14 @@ export async function decrypt(session: string | undefined = '') {
 
 export async function createSession(res:Response,userId: string) {
 
-  const expiresAt = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const token = await encrypt({ userId, expiresAt })
 
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     expires: expiresAt,
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/',
   })
 
@@ -50,7 +50,7 @@ export async function deleteSession(res:Response) {
    res.clearCookie("token",{
     httpOnly:true,
     secure:process.env.NODE_ENV==="production",
-    sameSite:"lax",
+    sameSite:process.env.NODE_ENV==="production" ? "none" : "lax",
     path:"/"
    })
 }
