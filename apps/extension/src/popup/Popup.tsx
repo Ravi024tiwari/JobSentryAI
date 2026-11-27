@@ -28,7 +28,7 @@ export function Popup() {
   const [lastAnalysis, setLastAnalysis] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiUrl, setApiUrl] = useState('http://localhost:5000/api/v1');
+  const [apiUrl, setApiUrl] = useState('https://jobsentryai-1.onrender.com/api/v1');
   const [savedSettings, setSavedSettings] = useState(false);
 
   // Authentication & Applications list for Tracker tab
@@ -140,7 +140,7 @@ export function Popup() {
     if (!activeJob) return;
     const stored = await chrome.storage.local.get(['userId']);
     if (!stored.userId) {
-      window.open('http://localhost:3000/login?redirect=/applications', '_blank');
+      window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank');
       return;
     }
 
@@ -162,7 +162,7 @@ export function Popup() {
         setTrackedSuccess(true);
         setTimeout(() => setTrackedSuccess(false), 3000);
       } else if (res?.error?.includes('AUTH_REQUIRED')) {
-        window.open('http://localhost:3000/login?redirect=/applications', '_blank');
+        window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank');
       }
     } catch (e) {
       console.error('Failed to track job:', e);
@@ -226,7 +226,7 @@ export function Popup() {
             </div>
           ) : (
             <button
-              onClick={() => window.open('http://localhost:3000/login?redirect=/applications', '_blank')}
+              onClick={() => window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank')}
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
             >
               Sign In
@@ -448,7 +448,7 @@ export function Popup() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800">Tracked Applications</span>
               <a
-                href="http://localhost:3000/applications"
+                href="https://job-sentry-i.vercel.app/applications"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1"
@@ -472,7 +472,7 @@ export function Popup() {
                   Application tracking is protected and tied to your verified account. Please sign in to track jobs and access smart follow-up reminders.
                 </p>
                 <button
-                  onClick={() => window.open('http://localhost:3000/login?redirect=/applications', '_blank')}
+                  onClick={() => window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank')}
                   className="w-full h-8.5 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <LogIn className="w-3.5 h-3.5" />
@@ -596,7 +596,7 @@ export function Popup() {
       <footer className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
         <span className="text-[11px]">JobSentry AI · 100% Private</span>
         <a
-          href="http://localhost:3000/applications"
+          href="https://job-sentry-i.vercel.app/applications"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-900 hover:text-blue-600 transition-colors"

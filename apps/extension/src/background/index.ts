@@ -1,6 +1,6 @@
 import type { ExtractedJobData } from '../content/parsers';
 
-const DEFAULT_API_URL = 'http://localhost:5000/api/v1';
+const DEFAULT_API_URL = 'https://jobsentryai-1.onrender.com/api/v1';
 
 // Service Worker for JobSentry AI Extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -100,6 +100,8 @@ async function getApiUrl(): Promise<string> {
 async function getAuthTokenFromCookies(): Promise<string | null> {
   try {
     const cookie =
+      (await chrome.cookies.get({ url: 'https://job-sentry-i.vercel.app', name: 'token' })) ||
+      (await chrome.cookies.get({ url: 'https://jobsentryai-1.onrender.com', name: 'token' })) ||
       (await chrome.cookies.get({ url: 'http://localhost:3000', name: 'token' })) ||
       (await chrome.cookies.get({ url: 'http://localhost:5000', name: 'token' })) ||
       (await chrome.cookies.get({ url: 'http://127.0.0.1:3000', name: 'token' })) ||

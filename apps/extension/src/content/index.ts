@@ -617,7 +617,7 @@ async function renderVerdictResult(job: ExtractedJobData, data: any) {
               </button>
             `
                 : `
-              <a href="http://localhost:3000/applications" target="_blank" style="display: block; text-align: center; font-size: 11.5px; font-weight: 600; color: #2563eb; text-decoration: none; padding: 6px; border: 1px dashed #bfdbfe; border-radius: 8px; background: #eff6ff;">
+              <a href="https://job-sentry-i.vercel.app/applications" target="_blank" style="display: block; text-align: center; font-size: 11.5px; font-weight: 600; color: #2563eb; text-decoration: none; padding: 6px; border: 1px dashed #bfdbfe; border-radius: 8px; background: #eff6ff;">
                 View in My Applications Dashboard ↗
               </a>
             `
@@ -638,11 +638,11 @@ async function renderVerdictResult(job: ExtractedJobData, data: any) {
 
   shadowRoot.querySelector('#jobsentry-close')?.addEventListener('click', renderFloatingButton);
   shadowRoot.querySelector('#jobsentry-open-web-btn')?.addEventListener('click', () => {
-    window.open('http://localhost:3000/applications', '_blank');
+    window.open('https://job-sentry-i.vercel.app/applications', '_blank');
   });
 
   shadowRoot.querySelector('#jobsentry-auth-btn')?.addEventListener('click', () => {
-    window.open('http://localhost:3000/login?redirect=/applications', '_blank');
+    window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank');
   });
 
   const trackBtn = shadowRoot.querySelector('#jobsentry-track-btn');
@@ -678,7 +678,7 @@ async function renderVerdictResult(job: ExtractedJobData, data: any) {
             <div style="font-size: 12px; font-weight: 700; color: #065f46; margin-bottom: 3px;">
               ✅ Successfully Tracked in Your Account!
             </div>
-            <a href="http://localhost:3000/applications" target="_blank" style="display: inline-block; font-size: 11px; font-weight: 600; color: #2563eb; text-decoration: underline;">
+            <a href="https://job-sentry-i.vercel.app/applications" target="_blank" style="display: inline-block; font-size: 11px; font-weight: 600; color: #2563eb; text-decoration: underline;">
               View in Web Dashboard ↗
             </a>
           </div>
@@ -688,7 +688,7 @@ async function renderVerdictResult(job: ExtractedJobData, data: any) {
       trackBtn.removeAttribute('disabled');
       if (err?.message?.includes('AUTH_REQUIRED')) {
         trackBtn.textContent = 'Sign In Required ↗';
-        window.open('http://localhost:3000/login?redirect=/applications', '_blank');
+        window.open('https://job-sentry-i.vercel.app/login?redirect=/applications', '_blank');
       } else {
         trackBtn.textContent = 'Failed to save. Try again';
       }
@@ -735,7 +735,12 @@ function escapeHtml(str: string): string {
 }
 
 // Auto-sync logged-in user session from Web Dashboard into extension storage
-if (window.location.origin.includes('localhost:3000') || window.location.origin.includes('127.0.0.1:3000')) {
+if (
+  window.location.origin.includes('localhost:3000') ||
+  window.location.origin.includes('127.0.0.1:3000') ||
+  window.location.origin.includes('job-sentry-i.vercel.app') ||
+  window.location.origin.includes('vercel.app')
+) {
   const syncUserSession = () => {
     try {
       const raw = localStorage.getItem('jobsentry_user');
@@ -812,8 +817,8 @@ function showFloatingToast(message: string, isAuthPrompt: boolean = false) {
     <span style="flex: 1; line-height: 1.4;">${escapeHtml(message)}</span>
     ${
       isAuthPrompt
-        ? '<a href="http://localhost:3000/login?redirect=/applications" target="_blank" style="padding: 4px 8px; border-radius: 6px; background: #2563eb; color: #fff; text-decoration: none; font-size: 11px; font-weight: 700; white-space: nowrap;">Sign In ↗</a>'
-        : '<a href="http://localhost:3000/applications" target="_blank" style="padding: 4px 8px; border-radius: 6px; background: #334155; color: #fff; text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap;">View ↗</a>'
+        ? '<a href="https://job-sentry-i.vercel.app/login?redirect=/applications" target="_blank" style="padding: 4px 8px; border-radius: 6px; background: #2563eb; color: #fff; text-decoration: none; font-size: 11px; font-weight: 700; white-space: nowrap;">Sign In ↗</a>'
+        : '<a href="https://job-sentry-i.vercel.app/applications" target="_blank" style="padding: 4px 8px; border-radius: 6px; background: #334155; color: #fff; text-decoration: none; font-size: 11px; font-weight: 600; white-space: nowrap;">View ↗</a>'
     }
     <button id="jobsentry-toast-close" style="background: none; border: none; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 2px;">✕</button>
   `;

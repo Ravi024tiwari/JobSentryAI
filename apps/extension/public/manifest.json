@@ -33,6 +33,8 @@
   ],
   "host_permissions": [
     "<all_urls>",
+    "https://jobsentryai-1.onrender.com/*",
+    "https://job-sentry-i.vercel.app/*",
     "http://localhost:5000/*"
   ]
 }
