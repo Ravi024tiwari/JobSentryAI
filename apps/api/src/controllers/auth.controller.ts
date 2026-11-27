@@ -5,7 +5,7 @@ import { db } from "../db/client"
 import { users } from "../db/schema"
 import { eq } from "drizzle-orm"
 import crypto from "crypto"
-import { createSession,deleteSession } from "../lib/session"
+import { createSession, deleteSession, decrypt } from "../lib/session"
 
 
 
@@ -52,9 +52,13 @@ export const register = async(req:Request,res:Response)=>{
         //its set that cookie with that response with the session management as well
 
         return res.status(201).json({
-            success:false,
+            success:true,
             message:"User registered successfully..",
-
+            user: {
+                id: newUserId,
+                name: name.trim(),
+                email: normalizedEmail,
+            }
         })
 
 
@@ -108,7 +112,12 @@ export const login = async(req:Request,res:Response)=>{
          return res.status(200).json({
             success:true,
             message:"User logged in Successfully..",
-            user
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                image: user.image,
+            }
          })
 
     } catch (error) {
@@ -131,4 +140,59 @@ export const logout = async(_req:Request,res:Response)=>{
     message:"User logged out successfully"
    })
 }
+
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    let userId: string | undefined;
+
+    const token = req.cookies?.token;
+    if (token) {
+      const session = await decrypt(token);
+      if (session && session.userId) {
+        userId = session.userId as string;
+      }
+    }
+
+    if (!userId && req.headers['x-user-id']) {
+      userId = req.headers['x-user-id'] as string;
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authenticated",
+      });
+    }
+
+    const userResults = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (userResults.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: userResults[0],
+    });
+  } catch (error: any) {
+    console.error("Get me error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 

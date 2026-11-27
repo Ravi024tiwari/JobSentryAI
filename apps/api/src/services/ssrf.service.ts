@@ -104,14 +104,34 @@ export async function safeFetchHtml(url: string, timeoutMs = 8000): Promise<stri
       redirect: 'follow',
       headers: {
         'User-Agent':
-          'JobSentry-Verification-Bot/1.0 (+https://jobsentry.ai; Responsible Job Verification Crawler)',
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
       },
     });
 
     clearTimeout(timer);
 
     if (!response.ok) {
+      if (response.status === 403) {
+        let domain = 'this website';
+        try {
+          domain = new URL(url).hostname;
+        } catch {}
+        throw new Error(
+          `${domain} blocked automated server access (HTTP 403 Forbidden). Major job aggregators like Glassdoor, LinkedIn, Indeed, and Naukri use Cloudflare anti-bot firewalls to block web crawlers. Tip: Use the "Manual Form / Text" mode to paste the job details directly!`
+        );
+      }
       throw new Error(`Failed to fetch job page. HTTP Status: ${response.status}`);
     }
 

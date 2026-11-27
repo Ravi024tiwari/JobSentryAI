@@ -1,6 +1,6 @@
 {
-  "id": "63bc4101-24ce-486d-aca3-9b1ebf94e341",
-  "prevId": "ba3d28cb-ff51-428a-b9da-47b7edc78152",
+  "id": "5168baab-83fe-4be9-ac2d-193968c5f3b0",
+  "prevId": "5360136b-296b-47a5-a5bc-79fbf8a299e4",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1101,37 +1101,21 @@
         },
         "previous_status": {
           "name": "previous_status",
-          "type": "application_status",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
         "new_status": {
           "name": "new_status",
-          "type": "application_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'MANUAL'"
+          "notNull": true
         },
         "note": {
           "name": "note",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         },
         "created_at": {
           "name": "created_at",
@@ -1147,21 +1131,6 @@
           "columns": [
             {
               "expression": "application_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "application_events_occurred_at_idx": {
-          "name": "application_events_occurred_at_idx",
-          "columns": [
-            {
-              "expression": "occurred_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1215,18 +1184,69 @@
           "name": "job_id",
           "type": "uuid",
           "primaryKey": false,
+          "notNull": false
+        },
+        "job_title": {
+          "name": "job_title",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
+        },
+        "company_name": {
+          "name": "company_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_url": {
+          "name": "job_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "platform": {
+          "name": "platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'OTHER'"
+        },
+        "salary": {
+          "name": "salary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "current_status": {
           "name": "current_status",
-          "type": "application_status",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'APPLIED'"
         },
         "applied_at": {
           "name": "applied_at",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_status_update_at": {
+          "name": "last_status_update_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1246,23 +1266,17 @@
         }
       },
       "indexes": {
-        "applications_user_job_idx": {
-          "name": "applications_user_job_idx",
+        "applications_user_id_idx": {
+          "name": "applications_user_id_idx",
           "columns": [
             {
               "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1278,6 +1292,21 @@
             },
             {
               "expression": "current_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "applications_applied_at_idx": {
+          "name": "applications_applied_at_idx",
+          "columns": [
+            {
+              "expression": "applied_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1313,7 +1342,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1802,23 +1831,6 @@
         "SUSPICIOUS",
         "LIKELY_FRAUDULENT",
         "UNABLE_TO_VERIFY"
-      ]
-    },
-    "public.application_status": {
-      "name": "application_status",
-      "schema": "public",
-      "values": [
-        "SAVED",
-        "APPLIED",
-        "ASSESSMENT_COMPLETED",
-        "INTERVIEW_SCHEDULED",
-        "INTERVIEW_COMPLETED",
-        "SELECTED",
-        "OFFER_RECEIVED",
-        "JOINED",
-        "REJECTED",
-        "NO_RESPONSE",
-        "WITHDRAWN"
       ]
     },
     "public.report_category": {

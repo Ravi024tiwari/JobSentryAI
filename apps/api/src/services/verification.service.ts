@@ -94,7 +94,7 @@ export class VerificationService {
       scamReportCount = reports.length;
     }
 
-    // 7. Calculate Mathematical Risk & Verdict
+    // 7. Calculate Mathematical Risk & Verdict (Deterministic Baseline)
     const scoring = calculateJobRiskAndVerdict({
       fraudSignals,
       domainAnalysis,
@@ -104,8 +104,130 @@ export class VerificationService {
       scamReportCount,
     });
 
-    // 8. Assemble Evidence Items
+    // 8. Phase 4: Consult Python AI Engine (LangGraph + Tavily + Gemini)
+    let aiInvestigation: any = null;
+    const aiEngineUrl = process.env.AI_ENGINE_URL?.replace('localhost', '127.0.0.1') || 'http://127.0.0.1:8000';
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for web research + LLM
+
+      const aiResponse = await fetch(`${aiEngineUrl}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          companyName: company?.name || job.title,
+          jobTitle: job.title,
+          description: job.description,
+          jobUrl: job.jobUrl,
+          salary: job.salary,
+          location: job.location,
+          employmentType: job.employmentType,
+          preComputedHints: {
+            fatalFlags: fraudSignals.filter((s) => s.severity === 'FATAL').map((s) => s.title),
+            suspiciousSignals: fraudSignals.filter((s) => s.severity !== 'FATAL').map((s) => s.title),
+            deterministicRiskScore: scoring.riskScore,
+            domainTrustScore: domainAnalysis?.trustScore,
+            domainWarningMessages: domainAnalysis?.warningMessages || [],
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (aiResponse.ok) {
+        aiInvestigation = await aiResponse.json();
+      } else {
+        console.warn(`[AI Engine] Verification service returned HTTP ${aiResponse.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`[AI Engine] Unavailable or timed out: ${err.message}. Proceeding with deterministic baseline.`);
+    }
+
+    // 9. Score Fusion: Blend Deterministic Math with AI Evidence
+    const hasFatalSignal = fraudSignals.some((s) => s.severity === 'FATAL');
+    let finalRiskScore = scoring.riskScore;
+    let finalConfidenceScore = scoring.confidenceScore;
+    let finalVerdict = scoring.verdict;
+    let finalPositiveSignals = [...scoring.positiveSignals];
+    let finalNegativeSignals = [...scoring.negativeSignals];
+    let finalEvidenceSummary = '';
+
+    if (aiInvestigation) {
+      // If deterministic found fatal scam, never let LLM hallucinate it away
+      if (hasFatalSignal) {
+        finalRiskScore = Math.max(scoring.riskScore, aiInvestigation.aiRiskScore);
+        finalVerdict = 'LIKELY_FRAUDULENT';
+        finalConfidenceScore = Math.max(scoring.confidenceScore, aiInvestigation.aiConfidenceScore || 0, 95);
+      } else {
+        // Weighted blend: 35% deterministic baseline + 65% AI contextual reasoning
+        finalRiskScore = Math.round(scoring.riskScore * 0.35 + aiInvestigation.aiRiskScore * 0.65);
+        finalConfidenceScore = Math.max(scoring.confidenceScore, aiInvestigation.aiConfidenceScore);
+
+        if (finalRiskScore >= 70) {
+          finalVerdict = 'LIKELY_FRAUDULENT';
+        } else if (finalRiskScore >= 35) {
+          finalVerdict = 'SUSPICIOUS';
+        } else if (finalConfidenceScore < 40) {
+          finalVerdict = 'UNABLE_TO_VERIFY';
+        } else {
+          finalVerdict = 'LIKELY_LEGITIMATE';
+        }
+      }
+
+      // Merge signals discovered by AI
+      if (Array.isArray(aiInvestigation.contextualRedFlags)) {
+        finalNegativeSignals.push(...aiInvestigation.contextualRedFlags);
+      }
+      if (Array.isArray(aiInvestigation.positiveIndicators)) {
+        finalPositiveSignals.push(...aiInvestigation.positiveIndicators);
+      }
+
+      finalEvidenceSummary = aiInvestigation.reasoningSummary || '';
+    } else {
+      finalEvidenceSummary =
+        scoring.verdict === 'LIKELY_FRAUDULENT'
+          ? 'Critical warning signs detected in recruitment statements.'
+          : scoring.verdict === 'LIKELY_LEGITIMATE'
+          ? 'No suspicious patterns found; company & recruiter align with official records.'
+          : 'Inconclusive signals; exercise diligence before sharing information.';
+    }
+
+    // Deduplicate signal lists
+    finalPositiveSignals = Array.from(new Set(finalPositiveSignals));
+    finalNegativeSignals = Array.from(new Set(finalNegativeSignals));
+
+    // 10. Assemble Evidence Items
     const evidenceList: VerificationEvidenceItem[] = [];
+
+    // Add AI Reasoning Evidence if available
+    if (aiInvestigation) {
+      evidenceList.push({
+        id: crypto.randomUUID(),
+        type: 'LLM_REASONING' as any,
+        sourceTitle: 'JobSentry AI Contextual Investigation',
+        summary: aiInvestigation.reasoningSummary,
+        isPositiveSignal: finalVerdict === 'LIKELY_LEGITIMATE',
+        credibilityScore: (aiInvestigation.aiConfidenceScore || 75) / 100,
+        recordedAt: new Date().toISOString(),
+      });
+
+      // Add ATS Matches Evidence if found
+      if (aiInvestigation.careersPortalMatches && aiInvestigation.careersPortalMatches.length > 0) {
+        evidenceList.push({
+          id: crypto.randomUUID(),
+          type: 'CAREERS_PORTAL' as any,
+          sourceUrl: aiInvestigation.careersPortalMatches[0].url,
+          sourceTitle: `Career Portal Listing: ${aiInvestigation.careersPortalMatches[0].title}`,
+          summary: `Cross-referenced vacancy matched official career portal listings.`,
+          isPositiveSignal: true,
+          credibilityScore: 0.9,
+          recordedAt: new Date().toISOString(),
+        });
+      }
+    }
 
     // Add Domain Evidence
     if (domainAnalysis) {
@@ -149,40 +271,38 @@ export class VerificationService {
       });
     }
 
-    // 9. Save Analysis to Neon Database
+    // 11. Save Analysis to Neon Database
     const newAnalysisId = crypto.randomUUID();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 Days Cache TTL
 
+    const finalRiskLevel =
+      finalRiskScore < 20 ? 'LOW' : finalRiskScore < 50 ? 'MEDIUM' : finalRiskScore < 80 ? 'HIGH' : 'CRITICAL';
+
     const analysisPayload = {
-      positiveSignals: scoring.positiveSignals,
-      negativeSignals: scoring.negativeSignals,
+      positiveSignals: finalPositiveSignals,
+      negativeSignals: finalNegativeSignals,
       fraudSignals,
       recommendations: scoring.recommendations,
-      evidenceSummary:
-        scoring.verdict === 'LIKELY_FRAUDULENT'
-          ? 'Critical warning signs detected in recruitment statements.'
-          : scoring.verdict === 'LIKELY_LEGITIMATE'
-          ? 'No suspicious patterns found; company & recruiter align with official records.'
-          : 'Inconclusive signals; exercise diligence before sharing information.',
+      evidenceSummary: finalEvidenceSummary,
     };
 
     await db.insert(jobAnalyses).values({
       id: newAnalysisId,
       jobId: job.id,
-      riskScore: scoring.riskScore,
-      riskLevel: scoring.riskLevel,
-      confidence: scoring.confidenceScore,
-      verdict: scoring.verdict,
+      riskScore: finalRiskScore,
+      riskLevel: finalRiskLevel,
+      confidence: finalConfidenceScore,
+      verdict: finalVerdict,
       analysisResult: analysisPayload,
       contentHash: job.contentHash,
-      modelVersion: 'deterministic-rules-v1.0',
-      workflowVersion: 'hybrid-scoring-v1.0',
+      modelVersion: 'deterministic-rules-v1.0 + gemini-3.8-flash',
+      workflowVersion: 'langgraph-detective-v1.0',
       analyzedAt: now,
       expiresAt,
     });
 
-    // 10. Save Evidence Items to Neon Database
+    // 12. Save Evidence Items to Neon Database
     if (evidenceList.length > 0) {
       for (const item of evidenceList) {
         await db.insert(analysisEvidence).values({
@@ -199,30 +319,30 @@ export class VerificationService {
       }
     }
 
-    // 11. Record Verification History
+    // 13. Record Verification History
     await db.insert(verificationHistory).values({
       id: crypto.randomUUID(),
       jobId: job.id,
       analysisId: newAnalysisId,
-      newVerdict: scoring.verdict,
+      newVerdict: finalVerdict,
       triggerReason: forceReAnalysis ? 'RE_ANALYSIS' : 'USER_SUBMISSION',
     });
 
     return {
       jobId: job.id,
-      verdict: scoring.verdict,
-      riskScore: scoring.riskScore,
-      riskLevel: scoring.riskLevel,
-      confidenceScore: scoring.confidenceScore,
-      positiveSignals: scoring.positiveSignals,
-      negativeSignals: scoring.negativeSignals,
+      verdict: finalVerdict,
+      riskScore: finalRiskScore,
+      riskLevel: finalRiskLevel,
+      confidenceScore: finalConfidenceScore,
+      positiveSignals: finalPositiveSignals,
+      negativeSignals: finalNegativeSignals,
       fraudSignals,
-      evidenceSummary: analysisPayload.evidenceSummary,
+      evidenceSummary: finalEvidenceSummary,
       recommendations: scoring.recommendations,
       evidenceList,
       modelVersions: {
         ruleEngine: 'deterministic-rules-v1.0',
-        langGraphVersion: 'hybrid-scoring-v1.0',
+        langGraphVersion: 'langgraph-detective-v1.0',
         analyzedAt: now.toISOString(),
       },
     };

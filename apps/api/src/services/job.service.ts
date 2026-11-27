@@ -40,40 +40,68 @@ export function computeJobContentHash(company: string, title: string, descriptio
 export function extractJobFromHtml(html: string, pageUrl: string) {
   const $ = cheerio.load(html);
 
-  // Remove scripts, styles, navigations, footers, etc.
-  $('script, style, noscript, nav, footer, header, svg, iframe, form').remove();
-
-  // Extract Title
-  const title =
+  // 1. Extract Meta & OpenGraph information BEFORE stripping tags (vital for React SPAs)
+  const ogTitle =
     $('meta[property="og:title"]').attr('content') ||
-    $('h1').first().text().trim() ||
-    $('title').text().trim() ||
-    'Untitled Job Opening';
+    $('meta[name="twitter:title"]').attr('content');
+  const pageTitle = $('title').text().trim();
+  const rawTitle = ogTitle || $('h1').first().text().trim() || pageTitle || 'Untitled Job Opening';
 
-  // Extract Company Name if available in meta tags or URL
+  const metaDesc =
+    $('meta[name="description"]').attr('content') ||
+    $('meta[property="og:description"]').attr('content') ||
+    $('meta[name="twitter:description"]').attr('content') ||
+    '';
+
+  // 2. Extract Company Name & clean Title
   const domain = new URL(pageUrl).hostname.replace(/^www\./, '');
   const domainBase = domain.split('.')[0] || 'Unknown Company';
 
-  const company =
+  let company =
     $('meta[property="og:site_name"]').attr('content') ||
     $('meta[name="author"]').attr('content') ||
-    domainBase;
+    '';
 
-  // Extract clean text
+  let jobTitle = rawTitle;
+
+  // Handle common job patterns: "Software Engineer at Google" or "Software Engineer Intern at Auraverse | Presio"
+  if (rawTitle.includes(' at ')) {
+    const parts = rawTitle.split(' at ');
+    jobTitle = parts[0].trim();
+    const candidateCompany = parts[1].split('|')[0].split('-')[0].trim();
+    if (candidateCompany) {
+      company = candidateCompany;
+    }
+  }
+
+  if (!company) {
+    company = domainBase;
+  }
+
+  // 3. Remove non-content elements
+  $('script, style, noscript, nav, footer, header, svg, iframe, form').remove();
+
+  // 4. Extract clean body text
   let bodyText =
     $('main').text() ||
     $('article').text() ||
     $('[class*="job"]').text() ||
     $('body').text();
 
-  // Normalize whitespace
   bodyText = bodyText.replace(/\s+/g, ' ').trim();
 
-  // Extract fallback description (up to 15,000 chars)
-  const description = bodyText.length > 50 ? bodyText.slice(0, 15000) : `Job opening posted at ${pageUrl}`;
+  // 5. Build rich description (handles React SPAs where body text is minimal or rendered client-side)
+  let description = '';
+  if (bodyText.length > 100) {
+    description = bodyText.slice(0, 15000);
+  } else if (metaDesc.length > 20) {
+    description = metaDesc;
+  } else {
+    description = `Job opening posted at ${pageUrl}`;
+  }
 
   return {
-    title: title.slice(0, 200),
+    title: jobTitle.slice(0, 200),
     company: company.slice(0, 100),
     description,
     domain,

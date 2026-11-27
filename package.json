@@ -11,7 +11,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "db:generate": "pnpm --filter api db:generate",
     "db:migrate": "pnpm --filter api db:migrate",
-    "db:studio": "pnpm --filter api db:studio"
+    "db:studio": "pnpm --filter api db:studio",
+    "db:push": "pnpm --filter api db:push"
   },
   "devDependencies": {
     "turbo": "^2.4.4",
