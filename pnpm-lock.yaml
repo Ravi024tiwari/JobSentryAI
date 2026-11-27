@@ -235,6 +235,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.9
+      tsx:
+        specifier: ^4.19.3
+        version: 4.23.15
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -257,9 +260,6 @@ importers:
       drizzle-kit:
         specifier: ^0.30.5
         version: 0.30.6
-      tsx:
-        specifier: ^4.19.3
-        version: 4.23.15
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
